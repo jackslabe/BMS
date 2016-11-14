@@ -189,6 +189,7 @@ void enableIrq(void) {
     /* Ensure INTC's current priority is 0 */
 #if defined(MPC574xP)
     INTC.CPR0.R = 0U;
+    INTC_0.PSR[226].R = 0x8001;    // PIT0
 #elif  defined(MPC574xR)
     /* Ensure INTC's current priority is 0 */
     if (coreId) INTC_0.CPR[1].R = 0U;
