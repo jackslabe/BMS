@@ -4,6 +4,10 @@
  */
 
 #include "derivative.h" /* include peripheral declarations */
+#include "BMS.h"
+#include "BmuInterface.h"
+#include "VcuInterface.h"
+#include "ScanIOInterface.h"
 
 extern void xcptn_xmpl(void);
 
@@ -93,10 +97,16 @@ int main(void)
 
 	PIT_Init();
 	GPIO_Init();
+	BMS_initialize();
 
 
 	/* Loop forever */
 	for(;;) {	   
 	   	counter++;
+	   	BmuRead();
+	   	VcuRead();
+	   	ScanIO();
+	   	BMS_step();
+
 	}
 }
