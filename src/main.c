@@ -9,6 +9,9 @@
 #include "VcuInterface.h"
 #include "ScanIOInterface.h"
 
+int TaskTimerCnt[5] = {0,0,0,0,0};  // ++ in Timer ISR, Clear before running Task
+
+
 extern void xcptn_xmpl(void);
 
 
@@ -66,32 +69,39 @@ void InitPeriClkGen(void)
 
 static void GPIO_Init(void)
 {
-   SIUL2.MSCR[3].R = 0x32000000; 	//PA[0] GPIO - LED_CTRL1
-   SIUL2.GPDO[3].R = 0x01;
+   SIUL2.MSCR[106].R = 0x32000000; 	//PG[10] GPIO - LED_CTRL1
+   SIUL2.GPDO[106].R = 0x00;
+   SIUL2.MSCR[59].R = 0x32000000; 	//PD[11] GPIO - LED_CTRL2
+   SIUL2.GPDO[59].R = 0x01;
+
 }
 
 void PIT_Init(void)
 {
 // PIT Timer Initialization
     PIT_0.MCR.B.MDIS = 0;               //Enable PIT_0 timers
-    PIT_0.TIMER[0].LDVAL.R = 5999999;   // setup timer 0 for 5000000 cycles
+    PIT_0.TIMER[0].LDVAL.R = 599999;   // setup timer 0 for 599999 cycles, about 10ms period
     PIT_0.TIMER[0].TCTRL.B.TIE = 1;     // Timer interrupt enable
     PIT_0.TIMER[0].TCTRL.B.TEN = 1;     // start Timer
 }//PIT_Init
 
 void PIT_ISR(void)
 {
-    PIT_0.TIMER[0].TCTRL.B.TEN = 1;     // stop PIT_0 Timer
-    SIUL2.GPDO[3].R = ~SIUL2.GPDO[3].R ;   ////PA[0] GPIO - LED
-    PIT_0.TIMER[0].TFLG.B.TIF = 1;     // Clear PIT_0 interrupt flag
-    PIT_0.TIMER[0].TCTRL.B.TEN = 1;     // sart PIT_0 Timer
+    PIT_0.TIMER[0].TCTRL.B.TEN = 1;     		// stop PIT_0 Timer
+
+    TaskTimerCnt[0]++;
+    TaskTimerCnt[1]++;
+    TaskTimerCnt[2]++;
+    TaskTimerCnt[3]++;
+    TaskTimerCnt[4]++;
+
+    PIT_0.TIMER[0].TFLG.B.TIF = 1;     			// Clear PIT_0 interrupt flag
+    PIT_0.TIMER[0].TCTRL.B.TEN = 1;     		// start PIT_0 Timer
 }//PIT_ISR
 
 
 int main(void)
 {
-	volatile int counter = 0;
-	
 	xcptn_xmpl ();              /* Configure and Enable Interrupts */
 	SysClk_Init();
 
@@ -99,14 +109,34 @@ int main(void)
 	GPIO_Init();
 	BMS_initialize();
 
-
 	/* Loop forever */
-	for(;;) {	   
-	   	counter++;
-	   	BmuRead();
-	   	VcuRead();
-	   	ScanIO();
-	   	BMS_step();
-
+	for(;;)
+	{
+		if(TaskTimerCnt[0]>10)
+		{
+			TaskTimerCnt[0] = 0;
+			SIUL2.GPDO[106].R = ~SIUL2.GPDO[106].R ; 	// PG[10] GPIO - LED
+			BmuRead();
+		}
+		if(TaskTimerCnt[1]>10)
+		{
+			TaskTimerCnt[1] = 0;
+			VcuRead();
+		}
+		if(TaskTimerCnt[2]>10)
+		{
+			TaskTimerCnt[2] = 0;
+			ScanIO();
+		}
+		if(TaskTimerCnt[3]>100)
+		{
+			TaskTimerCnt[3] = 0;
+			SIUL2.GPDO[59].R = ~SIUL2.GPDO[59].R ;   	// PD[11] GPIO - LED
+		   	BMS_step();
+		}
+		if(TaskTimerCnt[4]>100)
+		{
+			TaskTimerCnt[4] = 0;
+		}
 	}
 }
